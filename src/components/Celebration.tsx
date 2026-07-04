@@ -1,4 +1,4 @@
-const CONFETTI = ['🎉', '⭐', '🌟', '🎊', '✨', '💮', '🏅', '🎈']
+const CONFETTI = ['⭐', '✨', '🎉', '✨', '⭐']
 
 export default function Celebration({
   onNext,
@@ -22,7 +22,7 @@ export default function Celebration({
       </div>
       <div className="flex items-center gap-3">
         <img src="/bear-cheer.png" alt="クマせんせい" className="w-24 h-auto" />
-        <p className="text-4xl font-bold text-pink-500">すごい！ 🎉</p>
+        <p className="text-4xl font-bold text-pink-500">すごい！</p>
       </div>
       <button
         onClick={onNext}

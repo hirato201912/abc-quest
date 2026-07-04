@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { LETTERS, pickRandom, shuffle, type Letter } from '../data/letters'
 import { speak } from '../lib/speech'
 import { playCorrect, playFanfare, playWrong } from '../lib/sounds'
+import { saveRecord } from '../lib/records'
+import { addLocalLetterCorrect } from '../lib/collection'
 import Celebration from './Celebration'
 
 type Card = {
@@ -35,6 +37,7 @@ export default function MatchingGame() {
   const [justMatched, setJustMatched] = useState<Set<string>>(new Set())
   const [stickers, setStickers] = useState<Letter[]>([])
   const [combo, setCombo] = useState(0)
+  const missedLetters = useRef<Set<string>>(new Set()) // このラウンドでミスした文字
 
   const done = matched.size === cards.length && cards.length > 0
 
@@ -62,8 +65,13 @@ export default function MatchingGame() {
       setCombo((c) => c + 1)
       setSelected(null)
       playCorrect()
-      speak(`${card.letter.upper}! ${card.letter.word}!`)
+      speak(`${card.letter.upper}! ${card.letter.words[0].word}!`)
       if (next.size === cards.length) {
+        const roundLetters = [...new Set(cards.map((c) => c.letter.upper))]
+        const wrong = [...missedLetters.current]
+        const correct = roundLetters.filter((l) => !missedLetters.current.has(l))
+        addLocalLetterCorrect(correct)
+        saveRecord({ mode: 'matching', level, correct_letters: correct, wrong_letters: wrong })
         setTimeout(() => {
           playFanfare()
           speak('Great job!')
@@ -72,6 +80,8 @@ export default function MatchingGame() {
     } else {
       playWrong()
       setCombo(0)
+      missedLetters.current.add(first.letter.upper)
+      missedLetters.current.add(card.letter.upper)
       setWrongPair(new Set([first.id, card.id]))
       setTimeout(() => {
         setWrongPair(new Set())
@@ -86,6 +96,7 @@ export default function MatchingGame() {
     setStickers([])
     setCombo(0)
     setSelected(null)
+    missedLetters.current = new Set()
     if (pairsForLevel(level + 1) > pairsForLevel(level)) {
       setLevel(level + 1)
     } else {
@@ -104,7 +115,7 @@ export default function MatchingGame() {
             key={combo}
             className="px-4 py-1 rounded-full bg-yellow-400 text-orange-700 text-lg font-bold animate-pop"
           >
-            コンボ ×{combo}！🔥
+            コンボ ×{combo}！
           </span>
         )}
       </div>
@@ -113,7 +124,7 @@ export default function MatchingGame() {
       <div className="flex items-center gap-1 min-h-10 flex-wrap justify-center">
         {stickers.map((letter, i) => (
           <span key={i} className="text-3xl animate-bounce-in">
-            {letter.emoji}
+            {letter.words[0].emoji}
           </span>
         ))}
         {stickers.length === 0 && (
@@ -124,7 +135,7 @@ export default function MatchingGame() {
       </div>
 
       <p className="text-xl font-bold text-purple-700">
-        おなじ アルファベットの ペアを タッチしよう！
+        おおもじと こもじの ペアを タッチしよう！
       </p>
 
       <div className="grid grid-cols-4 landscape:grid-cols-8 gap-3 sm:gap-4 w-full">
@@ -152,7 +163,7 @@ export default function MatchingGame() {
               ].join(' ')}
             >
               {isMatched
-                ? card.letter.emoji
+                ? card.letter.words[0].emoji
                 : card.face === 'upper'
                   ? card.letter.upper
                   : card.letter.lower}

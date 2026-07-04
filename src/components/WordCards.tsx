@@ -6,12 +6,13 @@ export default function WordCards() {
   const [index, setIndex] = useState(0)
   const [animKey, setAnimKey] = useState(0)
   const letter = LETTERS[index]
+  const word = letter.words[0]
 
   function go(delta: number) {
     const next = (index + delta + LETTERS.length) % LETTERS.length
     setIndex(next)
     setAnimKey((k) => k + 1)
-    speak(`${LETTERS[next].upper}. ${LETTERS[next].word}.`)
+    speak(`${LETTERS[next].upper}. ${LETTERS[next].words[0].word}.`)
   }
 
   return (
@@ -22,17 +23,17 @@ export default function WordCards() {
 
       <button
         key={animKey}
-        onClick={() => speak(`${letter.upper}. ${letter.word}.`)}
+        onClick={() => speak(`${letter.upper}. ${word.word}.`)}
         className="w-full rounded-3xl bg-white shadow-xl p-8 landscape:p-5 flex flex-col landscape:flex-row items-center justify-center gap-4 landscape:gap-10 active:scale-95 transition-transform animate-bounce-in"
       >
         <div className="flex items-end gap-4">
           <span className="text-8xl landscape:text-7xl font-bold text-blue-600">{letter.upper}</span>
           <span className="text-7xl landscape:text-6xl font-bold text-pink-500">{letter.lower}</span>
         </div>
-        <span className="text-8xl landscape:text-7xl">{letter.emoji}</span>
+        <span className="text-8xl landscape:text-7xl">{word.emoji}</span>
         <div className="flex flex-col items-center gap-2">
-          <span className="text-4xl font-bold text-gray-800">{letter.word}</span>
-          <span className="text-xl text-gray-500">{letter.katakana}</span>
+          <span className="text-4xl font-bold text-gray-800">{word.word}</span>
+          <span className="text-xl text-gray-500">{word.katakana}</span>
           <span className="text-2xl">🔊</span>
         </div>
       </button>
