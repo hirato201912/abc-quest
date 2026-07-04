@@ -17,7 +17,7 @@ export default function WordCards() {
 
   return (
     <div className="flex flex-col items-center gap-6 landscape:gap-3 w-full max-w-xl landscape:max-w-3xl">
-      <p className="text-xl font-bold text-purple-700">
+      <p className="text-xl font-bold text-gray-600">
         カードを タッチすると こえが きこえるよ！
       </p>
 
@@ -27,8 +27,8 @@ export default function WordCards() {
         className="w-full rounded-3xl bg-white shadow-xl p-8 landscape:p-5 flex flex-col landscape:flex-row items-center justify-center gap-4 landscape:gap-10 active:scale-95 transition-transform animate-bounce-in"
       >
         <div className="flex items-end gap-4">
-          <span className="text-8xl landscape:text-7xl font-bold text-blue-600">{letter.upper}</span>
-          <span className="text-7xl landscape:text-6xl font-bold text-pink-500">{letter.lower}</span>
+          <span className="text-8xl landscape:text-7xl font-bold text-rose-500">{letter.upper}</span>
+          <span className="text-7xl landscape:text-6xl font-bold text-orange-400">{letter.lower}</span>
         </div>
         <span className="text-8xl landscape:text-7xl">{word.emoji}</span>
         <div className="flex flex-col items-center gap-2">

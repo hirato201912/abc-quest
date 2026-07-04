@@ -35,3 +35,18 @@ html, body {
 .animate-shake { animation: shake 0.3s ease; }
 .animate-float-up { animation: float-up 1s ease-out forwards; }
 .animate-bounce-in { animation: bounce-in 0.5s ease; }
+
+/* ブロックタウン: パーツが上から落ちて収まる */
+@keyframes build-drop {
+  0% { opacity: 0; transform: translateY(-10px); }
+  70% { opacity: 1; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.svg-built { animation: build-drop 0.6s ease; }
+
+/* ブロックタウン: つぎに建つ設計図の明滅 */
+@keyframes blueprint-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.9; }
+}
+.svg-next { animation: blueprint-pulse 1.6s ease-in-out infinite; }

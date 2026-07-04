@@ -107,13 +107,13 @@ export default function MatchingGame() {
   return (
     <div className="flex flex-col items-center gap-5 landscape:gap-3 w-full max-w-2xl landscape:max-w-4xl">
       <div className="flex items-center gap-4">
-        <span className="px-4 py-1 rounded-full bg-purple-500 text-white text-lg font-bold">
+        <span className="px-4 py-1 rounded-full bg-white border border-rose-200 text-rose-500 text-lg font-bold">
           レベル {level}
         </span>
         {combo >= 2 && (
           <span
             key={combo}
-            className="px-4 py-1 rounded-full bg-yellow-400 text-orange-700 text-lg font-bold animate-pop"
+            className="px-4 py-1 rounded-full bg-orange-100 text-orange-600 text-lg font-bold animate-pop"
           >
             コンボ ×{combo}！
           </span>
@@ -134,7 +134,7 @@ export default function MatchingGame() {
         )}
       </div>
 
-      <p className="text-xl font-bold text-purple-700">
+      <p className="text-xl font-bold text-gray-600">
         おおもじと こもじの ペアを タッチしよう！
       </p>
 
@@ -153,12 +153,12 @@ export default function MatchingGame() {
                 'aspect-square rounded-2xl text-5xl sm:text-6xl landscape:text-5xl font-bold shadow-md transition-colors',
                 'flex items-center justify-center',
                 isMatched
-                  ? 'bg-green-100'
+                  ? 'bg-orange-50'
                   : isWrong
-                    ? 'bg-red-300 text-red-800 animate-shake'
+                    ? 'bg-red-100 text-red-500 animate-shake'
                     : isSelected
-                      ? 'bg-yellow-300 text-orange-600 ring-4 ring-yellow-500 scale-105'
-                      : 'bg-white text-blue-600 active:bg-blue-100',
+                      ? 'bg-rose-100 text-rose-600 ring-4 ring-rose-300 scale-105'
+                      : 'bg-white text-rose-500 active:bg-rose-50',
                 popping ? 'animate-pop' : '',
               ].join(' ')}
             >

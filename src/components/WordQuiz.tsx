@@ -105,7 +105,7 @@ export default function WordQuiz() {
         <p className="text-3xl font-bold text-gray-700">
           ⭐ {stars} こ あつめたよ！
         </p>
-        <Celebration onNext={nextRound} label="もういちど あそぶ" />
+        <Celebration onNext={nextRound} label="もういちど チャレンジ" />
       </div>
     )
   }
@@ -120,7 +120,7 @@ export default function WordQuiz() {
         ))}
       </div>
 
-      <p className="text-xl font-bold text-purple-700">
+      <p className="text-xl font-bold text-gray-600">
         この ことばは どの アルファベットから はじまるかな？
       </p>
 
@@ -149,10 +149,10 @@ export default function WordQuiz() {
                 'aspect-square rounded-2xl text-6xl font-bold shadow-md',
                 'flex items-center justify-center transition-colors',
                 isCorrect
-                  ? 'bg-green-400 text-white animate-pop'
+                  ? 'bg-emerald-300 text-emerald-800 animate-pop'
                   : isWrong
-                    ? 'bg-red-300 text-red-800 animate-shake'
-                    : 'bg-white text-blue-600 active:bg-blue-100',
+                    ? 'bg-red-100 text-red-500 animate-shake'
+                    : 'bg-white text-rose-500 active:bg-rose-50',
               ].join(' ')}
             >
               {question.showLower ? choice.lower : choice.upper}
