@@ -24,6 +24,7 @@ export default function PlayerPicker({
     supabase
       .from('yesta_students')
       .select('id, name, grade')
+      .eq('active', true)
       .in('grade', GRADES)
       .order('grade')
       .order('name')

@@ -37,7 +37,7 @@
 ## Supabase連動（yesta-studyと共有）
 
 - 同じSupabaseプロジェクト（yesta-studyの `.env.local` と同じURL/anonキー）
-- 生徒マスタ: `yesta_students`（id, name, grade）— yesta-studyが管理
+- 生徒マスタ: `yesta_students`（id, name, grade, active）— yesta-studyが管理。退塾生は `active=false` になるので生徒取得は `.eq('active', true)` 必須（PlayerPicker.tsx）
 - プレイ記録: `abc_quest_records` — DDLは `supabase/abc_quest_records.sql`。列: mode('matching'|'quiz'), level, stars, total, correct_letters[], wrong_letters[], correct_words[], played_at
 - **RLSは未設定**（塾の既存運用方針に合わせた。将来生徒名簿を守るならRLS導入を提案済み）
 - 記録失敗・未設定・生徒未選択でもゲームは正常動作する（graceful degradation、`src/lib/records.ts`）
