@@ -72,6 +72,7 @@ export default function Zukan({ player }: { player: Player | null }) {
   }
 
   const percent = Math.round((words.size / TOTAL_WORDS) * 100)
+  const goldPercent = Math.round((goldCount / LETTERS.length) * 100)
   const cheer = complete
     ? null
     : percent >= 80
@@ -101,25 +102,47 @@ export default function Zukan({ player }: { player: Player | null }) {
         </div>
       )}
 
-      {/* ことばシールの進捗バー */}
-      <div className="w-full max-w-md flex flex-col gap-1.5">
-        <div className="flex justify-between items-center text-base font-bold text-gray-600">
-          <span>あつめた ことばシール</span>
-          <span>
-            {words.size} <span className="text-gray-400">/ {TOTAL_WORDS}</span>
-          </span>
+      {/* 2つの成果メーター（ことば集め・アルファベットの定着） */}
+      <div className="w-full max-w-md flex flex-col gap-4">
+        {/* あつめた ことばシール */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between items-center text-base font-bold text-gray-600">
+            <span>あつめた ことばシール</span>
+            <span>
+              {words.size} <span className="text-gray-400">/ {TOTAL_WORDS}</span>
+            </span>
+          </div>
+          <div className="h-5 rounded-full bg-white border border-rose-100 overflow-hidden">
+            <div
+              className="h-full bg-rose-400 rounded-full transition-all"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
         </div>
-        <div className="h-5 rounded-full bg-white border border-rose-100 overflow-hidden">
-          <div
-            className="h-full bg-rose-400 rounded-full transition-all"
-            style={{ width: `${percent}%` }}
-          />
+
+        {/* かんぺきに おぼえた アルファベット（★★★・きんいろ） */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between items-center text-base font-bold text-gray-600">
+            <span>
+              かんぺきに おぼえた アルファベット{' '}
+              <span className="text-amber-500">★★★</span>
+            </span>
+            <span>
+              {goldCount} <span className="text-gray-400">/ {LETTERS.length}</span>
+            </span>
+          </div>
+          <div className="h-5 rounded-full bg-white border border-amber-200 overflow-hidden">
+            <div
+              className="h-full bg-amber-400 rounded-full transition-all"
+              style={{ width: `${goldPercent}%` }}
+            />
+          </div>
         </div>
-        <div className="flex justify-end">
-          <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-sm font-bold">
-            ★★★ きんいろ {goldCount} / {LETTERS.length}
-          </span>
-        </div>
+
+        <p className="text-xs font-bold text-gray-400 text-center leading-relaxed">
+          おなじ アルファベットを なんかいも せいかいすると ★ が ふえて、
+          ぜんぶ そろうと きんいろに なるよ！
+        </p>
       </div>
 
       {complete && (
