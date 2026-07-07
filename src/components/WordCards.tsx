@@ -18,7 +18,7 @@ export default function WordCards() {
   return (
     <div className="flex flex-col items-center gap-6 landscape:gap-3 w-full max-w-xl landscape:max-w-3xl">
       <p className="text-xl font-bold text-gray-600">
-        カードを タッチすると こえが きこえるよ！
+        カードを おすと こえが きこえるよ！
       </p>
 
       <button

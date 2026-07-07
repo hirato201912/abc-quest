@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { LETTERS, pickRandom, shuffle, type Letter } from '../data/letters'
 import { speak } from '../lib/speech'
 import { playCorrect, playFanfare, playWrong } from '../lib/sounds'
@@ -13,13 +13,32 @@ type Card = {
 }
 
 const MAX_PAIRS = 8
+const MISS_LIMIT = 5 // 連打対策: これだけミスしたらカードを混ぜ直す
+const MEMORY_START_LEVEL = 3 // このレベルから裏向き（神経衰弱）になる
 
 function pairsForLevel(level: number) {
   return Math.min(3 + level, MAX_PAIRS) // レベル1=4ペア、以降+1
 }
 
+function pickRoundLetters(count: number): Letter[] {
+  const letters = pickRandom(LETTERS, count)
+  // 大文字Iと小文字lは字形がほぼ同じなので、IとLを同じラウンドに出さない
+  const hasI = letters.some((l) => l.upper === 'I')
+  const hasL = letters.some((l) => l.upper === 'L')
+  if (hasI && hasL) {
+    const dropTarget = Math.random() < 0.5 ? 'I' : 'L'
+    const replacement = pickRandom(
+      LETTERS.filter((l) => l.upper !== 'I' && l.upper !== 'L' && !letters.includes(l)),
+      1,
+    )[0]
+    const idx = letters.findIndex((l) => l.upper === dropTarget)
+    letters[idx] = replacement
+  }
+  return letters
+}
+
 function buildRound(level: number): Card[] {
-  const letters = pickRandom(LETTERS, pairsForLevel(level))
+  const letters = pickRoundLetters(pairsForLevel(level))
   const cards = letters.flatMap((letter): Card[] => [
     { id: `${letter.upper}-U`, letter, face: 'upper' },
     { id: `${letter.upper}-L`, letter, face: 'lower' },
@@ -29,20 +48,37 @@ function buildRound(level: number): Card[] {
 
 export default function MatchingGame() {
   const [level, setLevel] = useState(1)
-  const [roundKey, setRoundKey] = useState(0)
-  const cards = useMemo(() => buildRound(level), [level, roundKey])
+  const [cards, setCards] = useState<Card[]>(() => buildRound(1))
   const [selected, setSelected] = useState<string | null>(null)
   const [matched, setMatched] = useState<Set<string>>(new Set())
   const [wrongPair, setWrongPair] = useState<Set<string>>(new Set())
   const [justMatched, setJustMatched] = useState<Set<string>>(new Set())
   const [stickers, setStickers] = useState<Letter[]>([])
   const [combo, setCombo] = useState(0)
+  const [coaching, setCoaching] = useState(false) // 混ぜ直し中の声かけ表示
   const missedLetters = useRef<Set<string>>(new Set()) // このラウンドでミスした文字
+  const missStreak = useRef(0)
 
   const done = matched.size === cards.length && cards.length > 0
+  const memoryMode = level >= MEMORY_START_LEVEL // 神経衰弱（裏向き）
+
+  // 未クリアのカードだけ位置を混ぜ直す（クリア済みはそのまま）
+  function reshuffleUnmatched() {
+    setCards((prev) => {
+      const openIndexes = prev
+        .map((c, i) => (matched.has(c.id) ? -1 : i))
+        .filter((i) => i >= 0)
+      const pool = shuffle(openIndexes.map((i) => prev[i]))
+      const next = [...prev]
+      openIndexes.forEach((idx, k) => {
+        next[idx] = pool[k]
+      })
+      return next
+    })
+  }
 
   function handleTap(card: Card) {
-    if (matched.has(card.id) || wrongPair.size > 0) return
+    if (coaching || matched.has(card.id) || wrongPair.size > 0) return
 
     if (selected === null) {
       setSelected(card.id)
@@ -82,11 +118,24 @@ export default function MatchingGame() {
       setCombo(0)
       missedLetters.current.add(first.letter.upper)
       missedLetters.current.add(card.letter.upper)
+      missStreak.current += 1
+      // 神経衰弱ではミスは前提なので、混ぜ直し（連打対策）は表向きレベルのみ
+      const shouldCoach = !memoryMode && missStreak.current >= MISS_LIMIT
       setWrongPair(new Set([first.id, card.id]))
-      setTimeout(() => {
-        setWrongPair(new Set())
-        setSelected(null)
-      }, 500)
+      setTimeout(
+        () => {
+          setWrongPair(new Set())
+          setSelected(null)
+          if (shouldCoach) {
+            // 連打対策: いったん手を止めさせてカードを混ぜ直す
+            missStreak.current = 0
+            setCoaching(true)
+            reshuffleUnmatched()
+            setTimeout(() => setCoaching(false), 2200)
+          }
+        },
+        memoryMode ? 1000 : 500, // 裏向きのときは覚える時間を少し長く
+      )
     }
   }
 
@@ -97,11 +146,10 @@ export default function MatchingGame() {
     setCombo(0)
     setSelected(null)
     missedLetters.current = new Set()
-    if (pairsForLevel(level + 1) > pairsForLevel(level)) {
-      setLevel(level + 1)
-    } else {
-      setRoundKey((k) => k + 1) // 最大レベル到達後は同じ枚数で新しい問題
-    }
+    missStreak.current = 0
+    const next = pairsForLevel(level + 1) > pairsForLevel(level) ? level + 1 : level
+    setLevel(next)
+    setCards(buildRound(next)) // 最大レベル到達後も同じ枚数で新しい問題
   }
 
   return (
@@ -110,6 +158,11 @@ export default function MatchingGame() {
         <span className="px-4 py-1 rounded-full bg-white border border-rose-200 text-rose-500 text-lg font-bold">
           レベル {level}
         </span>
+        {memoryMode && (
+          <span className="px-4 py-1 rounded-full bg-rose-400 text-white text-lg font-bold">
+            めくりモード
+          </span>
+        )}
         {combo >= 2 && (
           <span
             key={combo}
@@ -135,41 +188,64 @@ export default function MatchingGame() {
       </div>
 
       <p className="text-xl font-bold text-gray-600">
-        おおもじと こもじの ペアを タッチしよう！
+        {memoryMode
+          ? 'カードを めくって おなじ ペアを さがそう！'
+          : 'おおもじと こもじの ペアを えらぼう！'}
       </p>
 
-      <div className="grid grid-cols-4 landscape:grid-cols-8 gap-3 sm:gap-4 w-full">
-        {cards.map((card) => {
-          const isMatched = matched.has(card.id)
-          const isSelected = selected === card.id
-          const isWrong = wrongPair.has(card.id)
-          const popping = justMatched.has(card.id)
-          return (
-            <button
-              key={card.id}
-              onClick={() => handleTap(card)}
-              disabled={isMatched}
-              className={[
-                'aspect-square rounded-2xl text-5xl sm:text-6xl landscape:text-5xl font-bold shadow-md transition-colors',
-                'flex items-center justify-center',
-                isMatched
-                  ? 'bg-orange-50'
-                  : isWrong
-                    ? 'bg-red-100 text-red-500 animate-shake'
-                    : isSelected
-                      ? 'bg-rose-100 text-rose-600 ring-4 ring-rose-300 scale-105'
-                      : 'bg-white text-rose-500 active:bg-rose-50',
-                popping ? 'animate-pop' : '',
-              ].join(' ')}
-            >
-              {isMatched
-                ? card.letter.words[0].emoji
-                : card.face === 'upper'
-                  ? card.letter.upper
-                  : card.letter.lower}
-            </button>
-          )
-        })}
+      <div className="relative w-full">
+        <div className="grid grid-cols-4 landscape:grid-cols-8 gap-3 sm:gap-4 w-full">
+          {cards.map((card) => {
+            const isMatched = matched.has(card.id)
+            const isSelected = selected === card.id
+            const isWrong = wrongPair.has(card.id)
+            const popping = justMatched.has(card.id)
+            // 神経衰弱では、選択中・判定中・クリア済みのカードだけ表を見せる
+            const faceUp = !memoryMode || isMatched || isSelected || isWrong
+            return (
+              <button
+                key={card.id}
+                onClick={() => handleTap(card)}
+                disabled={isMatched}
+                className={[
+                  'aspect-square rounded-2xl text-5xl sm:text-6xl landscape:text-5xl font-bold shadow-md transition-colors',
+                  'flex items-center justify-center',
+                  !faceUp
+                    ? 'bg-rose-200 active:bg-rose-300'
+                    : isMatched
+                      ? 'bg-orange-50'
+                      : isWrong
+                        ? 'bg-red-100 text-red-500 animate-shake'
+                        : isSelected
+                          ? 'bg-rose-100 text-rose-600 ring-4 ring-rose-300 scale-105'
+                          : 'bg-white text-rose-500 active:bg-rose-50',
+                  popping ? 'animate-pop' : '',
+                  memoryMode && faceUp && !isMatched ? 'animate-flip-in' : '',
+                ].join(' ')}
+              >
+                {!faceUp ? (
+                  <img src="/penguin.png" alt="" className="w-1/2 h-auto opacity-50" />
+                ) : isMatched ? (
+                  card.letter.words[0].emoji
+                ) : card.face === 'upper' ? (
+                  card.letter.upper
+                ) : (
+                  card.letter.lower
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {coaching && (
+          <div className="absolute inset-0 rounded-2xl bg-white/85 flex flex-col items-center justify-center gap-2 animate-bounce-in">
+            <img src="/bear-pointer.png" alt="クマせんせい" className="w-24 h-auto" />
+            <p className="text-2xl font-bold text-rose-500">
+              ゆっくり よく みてみよう！
+            </p>
+            <p className="text-sm font-bold text-gray-500">カードを まぜなおしたよ</p>
+          </div>
+        )}
       </div>
 
       {done && <Celebration onNext={nextLevel} label="つぎの レベルへ" />}

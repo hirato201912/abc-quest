@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { getPlayer } from './player'
 
 export type QuestRecord = {
-  mode: 'matching' | 'quiz'
+  mode: 'matching' | 'quiz' | 'listening' | 'ordering'
   level?: number
   stars?: number
   total?: number

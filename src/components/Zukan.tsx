@@ -23,7 +23,6 @@ function Stars({ rank }: { rank: 0 | 1 | 2 | 3 }) {
 export default function Zukan({ player }: { player: Player | null }) {
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [words, setWords] = useState<Set<string>>(new Set())
-  const [openLetter, setOpenLetter] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -72,71 +71,6 @@ export default function Zukan({ player }: { player: Player | null }) {
     return <p className="text-gray-500 font-bold">よみこみちゅう…</p>
   }
 
-  // 1文字ぶんのことばシール一覧
-  if (openLetter) {
-    const letter = LETTERS.find((l) => l.upper === openLetter)!
-    const rank = starRank(counts[letter.upper] ?? 0)
-    return (
-      <div className="flex flex-col items-center gap-6 w-full max-w-xl">
-        <div className="flex items-center gap-4">
-          <span className="text-7xl font-bold text-rose-500">
-            {letter.upper}
-            <span className="text-orange-400">{letter.lower}</span>
-          </span>
-          <Stars rank={rank} />
-        </div>
-
-        <div className="flex flex-wrap justify-center gap-4 w-full">
-          {letter.words.map((w) => {
-            const got = words.has(w.word)
-            return (
-              <button
-                key={w.word}
-                onClick={() => {
-                  if (got) speak(w.word)
-                }}
-                className={[
-                  'rounded-3xl px-6 py-5 flex flex-col items-center gap-1.5 min-w-40',
-                  got
-                    ? 'bg-white border-2 border-amber-200 shadow-md active:scale-95 transition-transform animate-bounce-in'
-                    : 'bg-white/60 border-2 border-dashed border-gray-300',
-                ].join(' ')}
-              >
-                <span className={got ? 'text-7xl' : 'text-6xl text-gray-300'}>
-                  {got ? w.emoji : '？'}
-                </span>
-                <span
-                  className={[
-                    'text-2xl font-bold',
-                    got ? 'text-gray-800' : 'text-gray-300',
-                  ].join(' ')}
-                >
-                  {got ? w.word : '？？？'}
-                </span>
-                {got && <span className="text-sm text-gray-500">{w.katakana}</span>}
-                {got && <span className="text-lg">🔊</span>}
-              </button>
-            )
-          })}
-        </div>
-
-        {letter.words.some((w) => !words.has(w.word)) && (
-          <p className="text-gray-500 font-bold">
-            クイズで せいかいすると シールが もらえるよ！
-          </p>
-        )}
-
-        <button
-          onClick={() => setOpenLetter(null)}
-          className="px-8 py-3 rounded-full bg-orange-400 text-white text-lg font-bold shadow active:scale-95 transition-transform"
-        >
-          シールちょうに もどる
-        </button>
-      </div>
-    )
-  }
-
-  // 26文字のシールちょう
   const percent = Math.round((words.size / TOTAL_WORDS) * 100)
   const cheer = complete
     ? null
@@ -147,8 +81,9 @@ export default function Zukan({ player }: { player: Player | null }) {
         : words.size > 0
           ? 'いい スタート！ クイズで シールを ふやそう！'
           : 'クイズで せいかいすると シールが もらえるよ！'
+
   return (
-    <div className="flex flex-col items-center gap-5 w-full max-w-2xl landscape:max-w-3xl">
+    <div className="flex flex-col items-center gap-5 w-full max-w-2xl landscape:max-w-4xl">
       <h2 className="text-3xl font-bold text-rose-500">
         {player ? `${player.name}さんの シールちょう` : 'きみの シールちょう'}
       </h2>
@@ -194,57 +129,63 @@ export default function Zukan({ player }: { player: Player | null }) {
         </div>
       )}
 
-      <div className="grid grid-cols-4 sm:grid-cols-5 landscape:grid-cols-7 gap-3 w-full">
-        {LETTERS.map((letter, i) => {
+      {/* 見開きアルバム: 1文字=1行、シール枠が全部見える */}
+      <div className="w-full flex flex-col landscape:grid landscape:grid-cols-2 gap-2">
+        {LETTERS.map((letter) => {
           const rank = starRank(counts[letter.upper] ?? 0)
-          const gotWords = letter.words.filter((w) => words.has(w.word))
-          const hasSticker = gotWords.length > 0
+          const isGold = rank === 3
           return (
-            <button
+            <div
               key={letter.upper}
-              onClick={() => setOpenLetter(letter.upper)}
               className={[
-                'aspect-square rounded-2xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-transform',
-                rank === 3
-                  ? 'bg-amber-50 ring-2 ring-amber-300 shadow-md'
-                  : hasSticker || rank > 0
-                    ? 'bg-white border border-rose-100 shadow-sm'
-                    : 'bg-white/60 border-2 border-dashed border-gray-200',
-                hasSticker ? 'animate-bounce-in' : '',
+                'flex items-center gap-3 px-3 py-2 rounded-2xl',
+                isGold
+                  ? 'bg-amber-50 border border-amber-200'
+                  : 'bg-white border border-rose-100',
               ].join(' ')}
-              style={hasSticker ? { animationDelay: `${i * 0.03}s` } : undefined}
             >
-              <span
-                className={[
-                  'text-3xl sm:text-4xl leading-none',
-                  hasSticker ? '' : 'text-gray-300',
-                ].join(' ')}
+              {/* 文字＋星（押すと文字の発音） */}
+              <button
+                onClick={() => speak(letter.upper)}
+                className="flex flex-col items-center w-14 shrink-0 active:scale-95 transition-transform"
               >
-                {hasSticker ? gotWords[0].emoji : '？'}
-              </span>
-              <span
-                className={[
-                  'text-lg font-bold leading-none',
-                  rank > 0 || hasSticker ? 'text-rose-500' : 'text-gray-300',
-                ].join(' ')}
-              >
-                {letter.upper}
-                <span
-                  className={
-                    rank > 0 || hasSticker ? 'text-orange-400' : 'text-gray-300'
-                  }
-                >
-                  {letter.lower}
+                <span className="text-2xl font-bold leading-tight">
+                  <span className="text-rose-500">{letter.upper}</span>
+                  <span className="text-orange-400">{letter.lower}</span>
                 </span>
-              </span>
-              <Stars rank={rank} />
-            </button>
+                <Stars rank={rank} />
+              </button>
+
+              {/* ことばシールの枠 */}
+              <div className="flex gap-2 flex-1 flex-wrap">
+                {letter.words.map((w) => {
+                  const got = words.has(w.word)
+                  return got ? (
+                    <button
+                      key={w.word}
+                      onClick={() => speak(w.word)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-amber-200 shadow-sm active:scale-95 transition-transform animate-bounce-in"
+                    >
+                      <span className="text-2xl">{w.emoji}</span>
+                      <span className="text-sm font-bold text-gray-700">{w.word}</span>
+                    </button>
+                  ) : (
+                    <div
+                      key={w.word}
+                      className="flex items-center px-4 py-1.5 rounded-xl border-2 border-dashed border-gray-200 text-gray-300 text-sm font-bold"
+                    >
+                      ？？？
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )
         })}
       </div>
 
       <p className="text-sm font-bold text-gray-500 text-center">
-        シールを タッチすると なかみが みられるよ！
+        シールを おすと こえが きこえるよ！
       </p>
     </div>
   )

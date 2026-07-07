@@ -74,7 +74,7 @@ export default function PlayerPicker({
   return (
     <div className="flex flex-col items-center gap-5 w-full max-w-lg">
       <h2 className="text-3xl font-bold text-rose-500">だれが チャレンジする？</h2>
-      <p className="text-sm font-bold text-gray-500">じぶんの なまえを タッチしてね</p>
+      <p className="text-sm font-bold text-gray-500">じぶんの なまえを えらんでね</p>
 
       {loading ? (
         <p className="text-gray-500 font-bold">よみこみちゅう…</p>

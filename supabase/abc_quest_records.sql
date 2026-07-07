@@ -4,7 +4,7 @@
 create table if not exists abc_quest_records (
   id uuid primary key default gen_random_uuid(),
   student_id uuid not null references yesta_students(id),
-  mode text not null check (mode in ('matching', 'quiz')),
+  mode text not null check (mode in ('matching', 'quiz', 'listening', 'ordering')),
   level int,                                  -- ペアさがし: クリアしたレベル
   stars int,                                  -- クイズ: ノーミス正解で獲得したスター数
   total int,                                  -- クイズ: 全問題数
@@ -21,3 +21,8 @@ create table if not exists abc_quest_records (
 --   add column if not exists correct_letters text[] not null default '{}',
 --   add column if not exists wrong_letters text[] not null default '{}',
 --   add column if not exists correct_words text[] not null default '{}';
+
+-- ※ listening / ordering モード追加時（2026-07-06）: 既存テーブルには以下を実行:
+-- alter table abc_quest_records drop constraint abc_quest_records_mode_check;
+-- alter table abc_quest_records add constraint abc_quest_records_mode_check
+--   check (mode in ('matching', 'quiz', 'listening', 'ordering'));
