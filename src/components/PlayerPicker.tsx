@@ -52,13 +52,13 @@ export default function PlayerPicker({
           </span>
           <span className="text-4xl font-bold text-gray-800">{confirming.name} さん</span>
         </div>
-        <p className="text-xl font-bold text-gray-600">この なまえで がんばる？</p>
+        <p className="text-xl font-bold text-gray-600">{confirming.name}さんで あってる？</p>
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button
             onClick={() => choose(confirming)}
             className="px-8 py-4 rounded-full bg-orange-400 text-white text-xl font-bold shadow active:scale-95 transition-transform"
           >
-            うん！ がんばる
+            うん！ はじめる
           </button>
           <button
             onClick={() => setConfirming(null)}
