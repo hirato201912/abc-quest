@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LETTERS } from '../data/letters'
 import { speak } from '../lib/speech'
-import { supabase } from '../lib/supabase'
-import { getLocalLetterCounts, getLocalWords, starRank } from '../lib/collection'
+import { loadProgress, starRank } from '../lib/collection'
 import { waitForPendingSaves } from '../lib/records'
 import type { Player } from '../lib/player'
 
@@ -24,43 +23,34 @@ export default function Zukan({ player }: { player: Player | null }) {
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [words, setWords] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
-      await waitForPendingSaves() // 直前のプレイの記録送信を待つ
-      // 生徒が選ばれていればSupabaseの記録から、いなければ端末内の記録から
-      if (player && supabase) {
-        const { data } = await supabase
-          .from('abc_quest_records')
-          .select('correct_letters, correct_words')
-          .eq('student_id', player.id)
-        if (!cancelled && data) {
-          const letterCounts: Record<string, number> = {}
-          const wordSet = new Set<string>()
-          for (const rec of data) {
-            for (const l of rec.correct_letters ?? []) {
-              letterCounts[l] = (letterCounts[l] ?? 0) + 1
-            }
-            for (const w of rec.correct_words ?? []) wordSet.add(w)
-          }
-          setCounts(letterCounts)
-          setWords(wordSet)
-          setLoading(false)
-          return
-        }
-      }
-      if (!cancelled) {
-        setCounts(getLocalLetterCounts())
-        setWords(getLocalWords())
-        setLoading(false)
+      setLoading(true)
+      setFailed(false)
+      try {
+        await waitForPendingSaves() // 直前のプレイの記録送信を待つ
+        // 生徒が選ばれていればSupabaseの記録から、いなければ端末内の記録から
+        const progress = await loadProgress(player)
+        if (cancelled) return
+        setCounts(progress.letterCounts)
+        setWords(progress.words)
+      } catch {
+        // 生徒選択時の読み込み失敗。端末内の記録に黙って切り替えると
+        // 端末ごとに違う成果が見えてしまうため、エラーとして見せる
+        if (!cancelled) setFailed(true)
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }
     load()
     return () => {
       cancelled = true
     }
-  }, [player])
+  }, [player, attempt])
 
   const goldCount = LETTERS.filter(
     (l) => starRank(counts[l.upper] ?? 0) === 3,
@@ -69,6 +59,24 @@ export default function Zukan({ player }: { player: Player | null }) {
 
   if (loading) {
     return <p className="text-gray-500 font-bold">よみこみちゅう…</p>
+  }
+
+  if (failed) {
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <p className="text-gray-600 font-bold text-center leading-relaxed">
+          シールちょうが よみこめなかったよ。
+          <br />
+          インターネットに つながっているか たしかめてね。
+        </p>
+        <button
+          onClick={() => setAttempt((n) => n + 1)}
+          className="rounded-2xl bg-orange-400 text-white font-bold text-lg px-8 py-3 shadow-md active:scale-95 transition-transform"
+        >
+          もういちど よみこむ
+        </button>
+      </div>
+    )
   }
 
   const percent = Math.round((words.size / TOTAL_WORDS) * 100)

@@ -2,7 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { LETTERS, pickRandom, shuffle, type Letter, type WordEntry } from '../data/letters'
 import { speak } from '../lib/speech'
 import { saveRecord } from '../lib/records'
-import { addLocalLetterCorrect, addLocalWords, getLocalWords } from '../lib/collection'
+import {
+  addLocalLetterCorrect,
+  addLocalWords,
+  getLocalWords,
+  loadProgress,
+} from '../lib/collection'
+import { getPlayer } from '../lib/player'
 import Celebration from './Celebration'
 
 const QUESTIONS_PER_ROUND = 8
@@ -15,8 +21,7 @@ type Question = {
   showLower: boolean
 }
 
-function buildQuestions(): Question[] {
-  const collected = getLocalWords()
+function buildQuestions(collected: Set<string>): Question[] {
   return pickRandom(LETTERS, QUESTIONS_PER_ROUND).map((answer) => {
     const others = pickRandom(
       LETTERS.filter((l) => l.upper !== answer.upper),
@@ -35,8 +40,28 @@ function buildQuestions(): Question[] {
 }
 
 export default function WordQuiz() {
+  // 収集済みの ことば（生徒選択時はSupabase、未選択時は端末内）。未収集を優先出題する
+  const [collected, setCollected] = useState<Set<string> | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    loadProgress(getPlayer())
+      .then((p) => {
+        if (!cancelled) setCollected(p.words)
+      })
+      .catch(() => {
+        // 出題の優先度にしか使わないので、読み込めなければ端末内の記録で代用
+        if (!cancelled) setCollected(getLocalWords())
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const [round, setRound] = useState(0)
-  const questions = useMemo(() => buildQuestions(), [round])
+  const questions = useMemo(
+    () => (collected ? buildQuestions(collected) : null),
+    [round, collected],
+  )
   const [qIndex, setQIndex] = useState(0)
   const [stars, setStars] = useState(0)
   const [wrongTap, setWrongTap] = useState<string | null>(null)
@@ -46,16 +71,16 @@ export default function WordQuiz() {
   const wrongLetters = useRef<string[]>([])
   const correctWords = useRef<string[]>([])
 
-  const question = questions[qIndex]
+  const question = questions ? questions[qIndex] : undefined
   const finished = qIndex >= QUESTIONS_PER_ROUND
 
   useEffect(() => {
-    if (!finished) speak(question.word.word)
+    if (!finished && question) speak(question.word.word)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qIndex, round])
+  }, [qIndex, round, questions])
 
   function handleChoice(choice: Letter) {
-    if (correctTap) return
+    if (!question || correctTap) return
     if (choice.upper === question.answer.upper) {
       setCorrectTap(true)
       const earned = missed ? stars : stars + 1 // ノーミス正解のみスター
@@ -108,6 +133,10 @@ export default function WordQuiz() {
         <Celebration onNext={nextRound} label="もういちど チャレンジ" />
       </div>
     )
+  }
+
+  if (!question) {
+    return <p className="text-gray-500 font-bold">よみこみちゅう…</p>
   }
 
   return (
