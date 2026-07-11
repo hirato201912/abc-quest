@@ -6,6 +6,7 @@ import { getPlayer, type Player } from './player'
 
 const LETTER_KEY = 'abc_quest_letter_counts'
 const WORD_KEY = 'abc_quest_words'
+const SENTENCE_KEY = 'abc_quest_sentences'
 
 // 生徒選択中はSupabaseの記録が正。端末内には書かず、生徒同士の記録の混入を防ぐ
 function cloudActive(): boolean {
@@ -52,9 +53,26 @@ export function addLocalWords(words: string[]) {
   localStorage.setItem(WORD_KEY, JSON.stringify([...set]))
 }
 
+export function getLocalSentences(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SENTENCE_KEY)
+    return new Set(raw ? (JSON.parse(raw) as string[]) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+export function addLocalSentences(sentences: string[]) {
+  if (sentences.length === 0 || cloudActive()) return
+  const set = getLocalSentences()
+  for (const s of sentences) set.add(s)
+  localStorage.setItem(SENTENCE_KEY, JSON.stringify([...set]))
+}
+
 export type Progress = {
   letterCounts: Record<string, number>
   words: Set<string>
+  sentences: Set<string> // ぶんつくり・中学じゅんびでノーミス完成した文
 }
 
 // 進捗の読み込み。生徒選択中はSupabaseの記録を集計（失敗時はthrow、ローカルへは切り替えない）、
@@ -63,18 +81,24 @@ export async function loadProgress(player: Player | null): Promise<Progress> {
   if (player && supabase) {
     const { data, error } = await supabase
       .from('abc_quest_records')
-      .select('correct_letters, correct_words')
+      .select('correct_letters, correct_words, correct_sentences')
       .eq('student_id', player.id)
     if (error) throw error
     const letterCounts: Record<string, number> = {}
     const words = new Set<string>()
+    const sentences = new Set<string>()
     for (const rec of data ?? []) {
       for (const l of rec.correct_letters ?? []) {
         letterCounts[l] = (letterCounts[l] ?? 0) + 1
       }
       for (const w of rec.correct_words ?? []) words.add(w)
+      for (const s of rec.correct_sentences ?? []) sentences.add(s)
     }
-    return { letterCounts, words }
+    return { letterCounts, words, sentences }
   }
-  return { letterCounts: getLocalLetterCounts(), words: getLocalWords() }
+  return {
+    letterCounts: getLocalLetterCounts(),
+    words: getLocalWords(),
+    sentences: getLocalSentences(),
+  }
 }

@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react'
 import { LETTERS } from '../data/letters'
+import { SENTENCES, SENTENCES_PREP, sentenceText } from '../data/sentences'
 import { speak } from '../lib/speech'
 import { loadProgress, starRank } from '../lib/collection'
 import { waitForPendingSaves } from '../lib/records'
 import type { Player } from '../lib/player'
 
 const TOTAL_WORDS = LETTERS.reduce((n, l) => n + l.words.length, 0)
+
+// つくれた文の表示用: 文 → 絵、コースごとの全文リスト
+const SENTENCE_EMOJI = new Map(
+  [...SENTENCES, ...SENTENCES_PREP].map((s) => [sentenceText(s), s.emoji]),
+)
+const SENTENCE_GROUPS = [
+  { label: 'ぶんつくり', texts: SENTENCES.map(sentenceText) },
+  { label: '中学じゅんび', texts: SENTENCES_PREP.map(sentenceText) },
+]
 
 function Stars({ rank }: { rank: 0 | 1 | 2 | 3 }) {
   return (
@@ -22,6 +32,7 @@ function Stars({ rank }: { rank: 0 | 1 | 2 | 3 }) {
 export default function Zukan({ player }: { player: Player | null }) {
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [words, setWords] = useState<Set<string>>(new Set())
+  const [sentences, setSentences] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -38,6 +49,7 @@ export default function Zukan({ player }: { player: Player | null }) {
         if (cancelled) return
         setCounts(progress.letterCounts)
         setWords(progress.words)
+        setSentences(progress.sentences)
       } catch {
         // 生徒選択時の読み込み失敗。端末内の記録に黙って切り替えると
         // 端末ごとに違う成果が見えてしまうため、エラーとして見せる
@@ -210,6 +222,54 @@ export default function Zukan({ player }: { player: Player | null }) {
                   )
                 })}
               </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* つくれた ぶん（ぶんつくり・中学じゅんびの成果） */}
+      <div className="w-full flex flex-col gap-2">
+        <h3 className="text-xl font-bold text-rose-500 text-center mt-2">
+          つくれた ぶん
+        </h3>
+        {SENTENCE_GROUPS.map((group) => {
+          const got = group.texts.filter((t) => sentences.has(t))
+          const isComplete = got.length === group.texts.length
+          return (
+            <div
+              key={group.label}
+              className={[
+                'rounded-2xl px-4 py-3 flex flex-col gap-2',
+                isComplete
+                  ? 'bg-amber-50 border border-amber-200'
+                  : 'bg-white border border-rose-100',
+              ].join(' ')}
+            >
+              <div className="flex justify-between items-center text-base font-bold text-gray-600">
+                <span>{group.label}</span>
+                <span>
+                  {got.length}{' '}
+                  <span className="text-gray-400">/ {group.texts.length}</span>
+                </span>
+              </div>
+              {got.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {got.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => speak(t)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-amber-200 shadow-sm active:scale-95 transition-transform animate-bounce-in"
+                    >
+                      <span className="text-xl">{SENTENCE_EMOJI.get(t)}</span>
+                      <span className="text-sm font-bold text-gray-700">{t}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm font-bold text-gray-300">
+                  まちがえずに ぶんを つくると ここに たまるよ
+                </p>
+              )}
             </div>
           )
         })}

@@ -17,6 +17,7 @@ type Mode =
   | 'listening'
   | 'ordering'
   | 'sentence'
+  | 'sentencePrep'
   | 'player'
   | 'zukan'
 
@@ -56,6 +57,12 @@ const GAME_MODES: { key: Mode; emoji: string; title: string; desc: string }[] = 
     emoji: '💬',
     title: 'ぶんつくり',
     desc: 'ことばを ならべて えいごの ぶんを つくろう',
+  },
+  {
+    key: 'sentencePrep',
+    emoji: '📝',
+    title: 'ぶんつくり 中学じゅんび',
+    desc: 'be動詞・三単現・いつどこで に チャレンジ',
   },
 ]
 
@@ -163,6 +170,7 @@ export default function App() {
             {mode === 'listening' && <ListeningQuiz />}
             {mode === 'ordering' && <OrderingGame />}
             {mode === 'sentence' && <SentenceGame />}
+            {mode === 'sentencePrep' && <SentenceGame key="prep" course="prep" />}
             {mode === 'zukan' && <Zukan player={player} />}
             {mode === 'player' && (
               <PlayerPicker
