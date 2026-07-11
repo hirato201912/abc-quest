@@ -2,13 +2,14 @@ import { supabase } from './supabase'
 import { getPlayer } from './player'
 
 export type QuestRecord = {
-  mode: 'matching' | 'quiz' | 'listening' | 'ordering'
+  mode: 'matching' | 'quiz' | 'listening' | 'ordering' | 'sentence'
   level?: number
   stars?: number
   total?: number
   correct_letters?: string[]
   wrong_letters?: string[]
   correct_words?: string[]
+  correct_sentences?: string[] // ぶんつくりでノーミス完成した文（correct_wordsとは分ける: ずかん集計を汚さないため）
 }
 
 // 送信中の記録。ずかん・ブロックタウンはこれを待ってから集計する

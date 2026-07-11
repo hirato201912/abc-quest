@@ -40,6 +40,13 @@ html, body {
 .animate-float-up { animation: float-up 1s ease-out forwards; }
 .animate-bounce-in { animation: bounce-in 0.5s ease; }
 
+/* シールめくり: 裏向きシールが「おしてね」とゆれる */
+@keyframes invite {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.animate-invite { animation: invite 1.2s ease-in-out infinite; }
+
 /* 神経衰弱: カードがめくれる */
 @keyframes flip-in {
   0% { transform: rotateY(90deg); }

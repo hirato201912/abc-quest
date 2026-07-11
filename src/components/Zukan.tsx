@@ -88,8 +88,8 @@ export default function Zukan({ player }: { player: Player | null }) {
       : percent >= 40
         ? 'その ちょうし！ どんどん あつめよう！'
         : words.size > 0
-          ? 'いい スタート！ クイズで シールを ふやそう！'
-          : 'クイズで せいかいすると シールが もらえるよ！'
+          ? 'いい スタート！ はじまりあてで シールを ふやそう！'
+          : 'はじまりあてで せいかいすると シールが もらえるよ！'
 
   return (
     <div className="flex flex-col items-center gap-5 w-full max-w-2xl landscape:max-w-4xl">

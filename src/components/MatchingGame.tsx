@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { LETTERS, pickRandom, shuffle, type Letter } from '../data/letters'
 import { speak } from '../lib/speech'
-import { playCorrect, playFanfare, playWrong } from '../lib/sounds'
+import { playCorrect, playWrong } from '../lib/sounds'
 import { saveRecord } from '../lib/records'
 import { addLocalLetterCorrect } from '../lib/collection'
 import Celebration from './Celebration'
@@ -53,6 +53,7 @@ export default function MatchingGame() {
   const [matched, setMatched] = useState<Set<string>>(new Set())
   const [wrongPair, setWrongPair] = useState<Set<string>>(new Set())
   const [justMatched, setJustMatched] = useState<Set<string>>(new Set())
+  const [justHidden, setJustHidden] = useState<Set<string>>(new Set()) // 裏へ戻る瞬間のフリップ用
   const [stickers, setStickers] = useState<Letter[]>([])
   const [combo, setCombo] = useState(0)
   const [coaching, setCoaching] = useState(false) // 混ぜ直し中の声かけ表示
@@ -61,6 +62,13 @@ export default function MatchingGame() {
 
   const done = matched.size === cards.length && cards.length > 0
   const memoryMode = level >= MEMORY_START_LEVEL // 神経衰弱（裏向き）
+
+  // 神経衰弱で表向きのカードが裏へ戻るときも、めくる動きを見せる
+  function flipBack(ids: string[]) {
+    if (!memoryMode) return
+    setJustHidden(new Set(ids))
+    setTimeout(() => setJustHidden(new Set()), 300)
+  }
 
   // 未クリアのカードだけ位置を混ぜ直す（クリア済みはそのまま）
   function reshuffleUnmatched() {
@@ -87,6 +95,7 @@ export default function MatchingGame() {
     }
     if (selected === card.id) {
       setSelected(null)
+      flipBack([card.id])
       return
     }
 
@@ -100,7 +109,7 @@ export default function MatchingGame() {
       setStickers((s) => [...s, card.letter])
       setCombo((c) => c + 1)
       setSelected(null)
-      playCorrect()
+      playCorrect(combo)
       speak(`${card.letter.upper}! ${card.letter.words[0].word}!`)
       if (next.size === cards.length) {
         const roundLetters = [...new Set(cards.map((c) => c.letter.upper))]
@@ -108,10 +117,8 @@ export default function MatchingGame() {
         const correct = roundLetters.filter((l) => !missedLetters.current.has(l))
         addLocalLetterCorrect(correct)
         saveRecord({ mode: 'matching', level, correct_letters: correct, wrong_letters: wrong })
-        setTimeout(() => {
-          playFanfare()
-          speak('Great job!')
-        }, 1000)
+        // ファンファーレはCelebrationが成績に応じて鳴らす
+        setTimeout(() => speak('Great job!'), 1000)
       }
     } else {
       playWrong()
@@ -126,6 +133,7 @@ export default function MatchingGame() {
         () => {
           setWrongPair(new Set())
           setSelected(null)
+          flipBack([first.id, card.id])
           if (shouldCoach) {
             // 連打対策: いったん手を止めさせてカードを混ぜ直す
             missStreak.current = 0
@@ -142,6 +150,7 @@ export default function MatchingGame() {
   function nextLevel() {
     setMatched(new Set())
     setJustMatched(new Set())
+    setJustHidden(new Set())
     setStickers([])
     setCombo(0)
     setSelected(null)
@@ -173,8 +182,8 @@ export default function MatchingGame() {
         )}
       </div>
 
-      {/* あつめたシール */}
-      <div className="flex items-center gap-1 min-h-10 flex-wrap justify-center">
+      {/* あつめたシール（トレイ） */}
+      <div className="flex items-center gap-1.5 min-h-12 flex-wrap justify-center rounded-full bg-white/70 border border-rose-100 px-6 py-1.5">
         {stickers.map((letter, i) => (
           <span key={i} className="text-3xl animate-bounce-in">
             {letter.words[0].emoji}
@@ -208,23 +217,24 @@ export default function MatchingGame() {
                 onClick={() => handleTap(card)}
                 disabled={isMatched}
                 className={[
-                  'aspect-square rounded-2xl text-5xl sm:text-6xl landscape:text-5xl font-bold shadow-md transition-colors',
+                  'aspect-square rounded-2xl text-5xl sm:text-6xl landscape:text-5xl font-bold shadow-md transition-all',
                   'flex items-center justify-center',
                   !faceUp
-                    ? 'bg-rose-200 active:bg-rose-300'
+                    ? 'bg-gradient-to-br from-rose-200 to-rose-300 border-2 border-white/60 hover:-translate-y-0.5 hover:shadow-lg active:scale-95'
                     : isMatched
-                      ? 'bg-orange-50'
+                      ? `bg-orange-50 border border-orange-100 shadow-none ${popping ? 'ring-2 ring-amber-200' : ''}`
                       : isWrong
                         ? 'bg-red-100 text-red-500 animate-shake'
                         : isSelected
                           ? 'bg-rose-100 text-rose-600 ring-4 ring-rose-300 scale-105'
-                          : 'bg-white text-rose-500 active:bg-rose-50',
+                          : 'bg-white text-rose-500 hover:-translate-y-0.5 hover:shadow-lg active:bg-rose-50',
                   popping ? 'animate-pop' : '',
                   memoryMode && faceUp && !isMatched ? 'animate-flip-in' : '',
+                  !faceUp && justHidden.has(card.id) ? 'animate-flip-in' : '',
                 ].join(' ')}
               >
                 {!faceUp ? (
-                  <img src="/penguin.png" alt="" className="w-1/2 h-auto opacity-50" />
+                  <img src="/penguin.png" alt="" className="w-1/2 h-auto opacity-60" />
                 ) : isMatched ? (
                   card.letter.words[0].emoji
                 ) : card.face === 'upper' ? (
@@ -238,17 +248,25 @@ export default function MatchingGame() {
         </div>
 
         {coaching && (
-          <div className="absolute inset-0 rounded-2xl bg-white/85 flex flex-col items-center justify-center gap-2 animate-bounce-in">
-            <img src="/bear-pointer.png" alt="クマせんせい" className="w-24 h-auto" />
-            <p className="text-2xl font-bold text-rose-500">
-              ゆっくり よく みてみよう！
-            </p>
-            <p className="text-sm font-bold text-gray-500">カードを まぜなおしたよ</p>
+          <div className="absolute inset-0 rounded-2xl bg-white/60 backdrop-blur-[2px] flex items-center justify-center animate-bounce-in">
+            <div className="flex flex-col items-center gap-2 rounded-3xl bg-white border border-rose-100 shadow-xl px-10 py-6">
+              <img src="/bear-pointer.png" alt="クマせんせい" className="w-24 h-auto" />
+              <p className="text-2xl font-bold text-rose-500">
+                ゆっくり よく みてみよう！
+              </p>
+              <p className="text-sm font-bold text-gray-500">カードを まぜなおしたよ</p>
+            </div>
           </div>
         )}
       </div>
 
-      {done && <Celebration onNext={nextLevel} label="つぎの レベルへ" />}
+      {done && (
+        <Celebration
+          tier={missedLetters.current.size === 0 ? 4 : 3}
+          onNext={nextLevel}
+          label="つぎの レベルへ"
+        />
+      )}
     </div>
   )
 }

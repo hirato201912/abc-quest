@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { LETTERS, shuffle, type Letter } from '../data/letters'
 import { speak } from '../lib/speech'
-import { playCorrect, playFanfare, playWrong } from '../lib/sounds'
+import { playCorrect, playWrong } from '../lib/sounds'
 import { saveRecord } from '../lib/records'
 import { addLocalLetterCorrect } from '../lib/collection'
 import Celebration from './Celebration'
@@ -83,8 +83,8 @@ export default function OrderingGame() {
         const correct = blankLetters.filter((l) => !missedLetters.current.has(l))
         addLocalLetterCorrect(correct)
         saveRecord({ mode: 'ordering', level, correct_letters: correct, wrong_letters: wrong })
+        // ファンファーレはCelebrationが成績に応じて鳴らす
         setTimeout(() => {
-          playFanfare()
           // そろった区間をとおして読み上げる
           speak(round.segment.map((l) => l.upper).join('. '))
         }, 800)
@@ -187,10 +187,10 @@ export default function OrderingGame() {
                 onClick={() => handleCandidate(candidate)}
                 className={[
                   'w-16 h-16 sm:w-20 sm:h-20 rounded-2xl text-4xl sm:text-5xl font-bold shadow-md',
-                  'flex items-center justify-center transition-colors',
+                  'flex items-center justify-center transition-all',
                   isWrong
                     ? 'bg-red-100 text-red-500 animate-shake'
-                    : 'bg-white text-rose-500 active:bg-rose-50',
+                    : 'bg-white text-rose-500 hover:-translate-y-0.5 hover:shadow-lg active:bg-rose-50',
                 ].join(' ')}
               >
                 {show(candidate)}
@@ -200,7 +200,13 @@ export default function OrderingGame() {
         </div>
       )}
 
-      {done && <Celebration onNext={nextLevel} label="つぎの レベルへ" />}
+      {done && (
+        <Celebration
+          tier={missedLetters.current.size === 0 ? 4 : 3}
+          onNext={nextLevel}
+          label="つぎの レベルへ"
+        />
+      )}
     </div>
   )
 }

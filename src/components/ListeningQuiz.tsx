@@ -4,7 +4,7 @@ import { speak } from '../lib/speech'
 import { playCorrect, playWrong } from '../lib/sounds'
 import { saveRecord } from '../lib/records'
 import { addLocalLetterCorrect } from '../lib/collection'
-import Celebration from './Celebration'
+import Celebration, { type CelebrationTier } from './Celebration'
 
 const QUESTIONS_PER_ROUND = 8
 const CHOICES = 4
@@ -39,6 +39,7 @@ export default function ListeningQuiz() {
   const [wrongTap, setWrongTap] = useState<string | null>(null)
   const [correctTap, setCorrectTap] = useState(false)
   const [missed, setMissed] = useState(false) // この問題で一度でも間違えたか
+  const [combo, setCombo] = useState(0) // ノーミス正解の連続数
   const correctLetters = useRef<string[]>([])
   const wrongLetters = useRef<string[]>([])
 
@@ -57,6 +58,7 @@ export default function ListeningQuiz() {
       const earned = missed ? stars : stars + 1 // ノーミス正解のみスター
       setStars(earned)
       ;(missed ? wrongLetters : correctLetters).current.push(question.answer.upper)
+      if (!missed) setCombo((c) => c + 1)
       if (qIndex + 1 === QUESTIONS_PER_ROUND) {
         addLocalLetterCorrect(correctLetters.current)
         saveRecord({
@@ -67,7 +69,7 @@ export default function ListeningQuiz() {
           wrong_letters: wrongLetters.current,
         })
       }
-      playCorrect()
+      playCorrect(missed ? 0 : combo)
       speak(`${question.answer.upper}! ${question.word.word}!`)
       setTimeout(() => {
         setCorrectTap(false)
@@ -79,6 +81,7 @@ export default function ListeningQuiz() {
       playWrong()
       setWrongTap(choice.upper)
       setMissed(true)
+      setCombo(0)
       speak(question.answer.upper)
       setTimeout(() => setWrongTap(null), 500)
     }
@@ -88,30 +91,41 @@ export default function ListeningQuiz() {
     setQIndex(0)
     setStars(0)
     setMissed(false)
+    setCombo(0)
     correctLetters.current = []
     wrongLetters.current = []
     setRound((r) => r + 1)
   }
 
   if (finished) {
+    const tier: CelebrationTier =
+      stars === QUESTIONS_PER_ROUND ? 4 : stars >= 6 ? 3 : stars >= 3 ? 2 : 1
     return (
       <div className="flex flex-col items-center gap-6">
         <p className="text-3xl font-bold text-gray-700">
           ⭐ {stars} こ あつめたよ！
         </p>
-        <Celebration onNext={nextRound} label="もういちど チャレンジ" />
+        <Celebration tier={tier} onNext={nextRound} label="もういちど チャレンジ" />
       </div>
     )
   }
 
   return (
     <div className="flex flex-col items-center gap-6 landscape:gap-3 w-full max-w-xl landscape:max-w-4xl">
-      <div className="flex items-center gap-2 text-2xl">
+      <div className="relative flex items-center gap-2 text-2xl">
         {Array.from({ length: QUESTIONS_PER_ROUND }).map((_, i) => (
           <span key={i} className={i < stars ? '' : 'opacity-25'}>
             ⭐
           </span>
         ))}
+        {combo >= 2 && (
+          <span
+            key={combo}
+            className="absolute left-full ml-3 whitespace-nowrap px-3 py-0.5 rounded-full bg-orange-100 text-orange-600 text-base font-bold animate-pop"
+          >
+            コンボ ×{combo}！
+          </span>
+        )}
       </div>
 
       <p className="text-xl font-bold text-gray-600">
@@ -132,7 +146,7 @@ export default function ListeningQuiz() {
         ) : (
           <button
             onClick={() => speak(question.answer.upper)}
-            className="rounded-3xl bg-white shadow-xl px-14 py-10 landscape:px-10 landscape:py-6 flex flex-col items-center gap-3 active:scale-95 transition-transform"
+            className="rounded-3xl bg-white shadow-xl px-14 py-10 landscape:px-10 landscape:py-6 flex flex-col items-center gap-3 hover:scale-[1.01] active:scale-95 transition-transform"
           >
             <span className="text-7xl">🔊</span>
             <span className="text-xl font-bold text-gray-600">もういちど きく</span>
@@ -149,12 +163,12 @@ export default function ListeningQuiz() {
                 onClick={() => handleChoice(choice)}
                 className={[
                   'aspect-square rounded-2xl text-6xl font-bold shadow-md',
-                  'flex items-center justify-center transition-colors',
+                  'flex items-center justify-center transition-all',
                   isCorrect
                     ? 'bg-emerald-300 text-emerald-800 animate-pop'
                     : isWrong
                       ? 'bg-red-100 text-red-500 animate-shake'
-                      : 'bg-white text-rose-500 active:bg-rose-50',
+                      : 'bg-white text-rose-500 hover:-translate-y-0.5 hover:shadow-lg active:bg-rose-50',
                 ].join(' ')}
               >
                 {question.showLower ? choice.lower : choice.upper}

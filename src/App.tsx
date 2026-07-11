@@ -6,6 +6,7 @@ import PlayerPicker from './components/PlayerPicker'
 import Zukan from './components/Zukan'
 import ListeningQuiz from './components/ListeningQuiz'
 import OrderingGame from './components/OrderingGame'
+import SentenceGame from './components/SentenceGame'
 import { getPlayer, type Player } from './lib/player'
 
 type Mode =
@@ -15,6 +16,7 @@ type Mode =
   | 'quiz'
   | 'listening'
   | 'ordering'
+  | 'sentence'
   | 'player'
   | 'zukan'
 
@@ -22,7 +24,7 @@ const GAME_MODES: { key: Mode; emoji: string; title: string; desc: string }[] = 
   {
     key: 'cards',
     emoji: '📖',
-    title: 'たんごカード',
+    title: 'ことばカード',
     desc: 'アルファベットと ことばを おぼえよう',
   },
   {
@@ -34,8 +36,8 @@ const GAME_MODES: { key: Mode; emoji: string; title: string; desc: string }[] = 
   {
     key: 'quiz',
     emoji: '🎯',
-    title: 'クイズ',
-    desc: 'ことばの さいしょの アルファベットは どれかな？',
+    title: 'はじまりあて',
+    desc: 'ことばの はじまりの アルファベットを あてよう',
   },
   {
     key: 'listening',
@@ -48,6 +50,12 @@ const GAME_MODES: { key: Mode; emoji: string; title: string; desc: string }[] = 
     emoji: '🔢',
     title: 'ならべかえ',
     desc: 'アルファベットの じゅんばんを かんせいさせよう',
+  },
+  {
+    key: 'sentence',
+    emoji: '💬',
+    title: 'ぶんつくり',
+    desc: 'ことばを ならべて えいごの ぶんを つくろう',
   },
 ]
 
@@ -107,7 +115,7 @@ export default function App() {
                   onClick={() => setMode(m.key)}
                   className={[
                     'bg-white border border-rose-100 rounded-2xl px-4 py-3 shadow-sm',
-                    'active:scale-[0.98] transition-transform flex items-center gap-3 text-left',
+                    'hover:border-rose-200 hover:shadow-md active:scale-[0.98] transition-all flex items-center gap-3 text-left',
                     i === GAME_MODES.length - 1 && GAME_MODES.length % 2 === 1
                       ? 'col-span-2'
                       : '',
@@ -126,7 +134,7 @@ export default function App() {
             </span>
             <button
               onClick={() => setMode('zukan')}
-              className="bg-orange-50 border border-orange-100 rounded-2xl px-4 py-3 active:scale-[0.98] transition-transform flex items-center gap-3 text-left"
+              className="bg-orange-50 border border-orange-100 rounded-2xl px-4 py-3 hover:border-orange-200 hover:shadow-md active:scale-[0.98] transition-all flex items-center gap-3 text-left"
             >
               <span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-xl shrink-0">
                 📔
@@ -154,6 +162,7 @@ export default function App() {
             {mode === 'quiz' && <WordQuiz />}
             {mode === 'listening' && <ListeningQuiz />}
             {mode === 'ordering' && <OrderingGame />}
+            {mode === 'sentence' && <SentenceGame />}
             {mode === 'zukan' && <Zukan player={player} />}
             {mode === 'player' && (
               <PlayerPicker

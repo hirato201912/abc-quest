@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { LETTERS, pickRandom, shuffle, type Letter, type WordEntry } from '../data/letters'
 import { speak } from '../lib/speech'
+import { playCorrect, playWrong } from '../lib/sounds'
 import { saveRecord } from '../lib/records'
 import {
   addLocalLetterCorrect,
@@ -9,7 +10,8 @@ import {
   loadProgress,
 } from '../lib/collection'
 import { getPlayer } from '../lib/player'
-import Celebration from './Celebration'
+import Celebration, { type CelebrationTier } from './Celebration'
+import StickerReveal from './StickerReveal'
 
 const QUESTIONS_PER_ROUND = 8
 const CHOICES = 4
@@ -67,9 +69,11 @@ export default function WordQuiz() {
   const [wrongTap, setWrongTap] = useState<string | null>(null)
   const [correctTap, setCorrectTap] = useState(false)
   const [missed, setMissed] = useState(false) // この問題で一度でも間違えたか
+  const [combo, setCombo] = useState(0) // ノーミス正解の連続数
   const correctLetters = useRef<string[]>([])
   const wrongLetters = useRef<string[]>([])
   const correctWords = useRef<string[]>([])
+  const newStickers = useRef<WordEntry[]>([]) // このラウンドで はじめて手に入れた ことばシール
 
   const question = questions ? questions[qIndex] : undefined
   const finished = qIndex >= QUESTIONS_PER_ROUND
@@ -86,7 +90,15 @@ export default function WordQuiz() {
       const earned = missed ? stars : stars + 1 // ノーミス正解のみスター
       setStars(earned)
       ;(missed ? wrongLetters : correctLetters).current.push(question.answer.upper)
-      if (!missed) correctWords.current.push(question.word.word)
+      if (!missed) {
+        correctWords.current.push(question.word.word)
+        // ずかんに まだ ない ことばなら、ラウンド後の「シールめくり」に出す
+        if (collected && !collected.has(question.word.word)) {
+          newStickers.current.push(question.word)
+        }
+        setCombo((c) => c + 1)
+      }
+      playCorrect(missed ? 0 : combo)
       if (qIndex + 1 === QUESTIONS_PER_ROUND) {
         addLocalLetterCorrect(correctLetters.current)
         addLocalWords(correctWords.current)
@@ -107,30 +119,46 @@ export default function WordQuiz() {
         setQIndex((i) => i + 1)
       }, 1200)
     } else {
+      playWrong()
       setWrongTap(choice.upper)
       setMissed(true)
+      setCombo(0)
       speak(question.word.word)
       setTimeout(() => setWrongTap(null), 500)
     }
   }
 
   function nextRound() {
+    // あつめた ことばを反映（次ラウンドの出題優先と「あたらしいシール」判定に使う）
+    setCollected((prev) => {
+      if (!prev) return prev
+      const next = new Set(prev)
+      for (const w of correctWords.current) next.add(w)
+      return next
+    })
     setQIndex(0)
     setStars(0)
     setMissed(false)
+    setCombo(0)
     correctLetters.current = []
     wrongLetters.current = []
     correctWords.current = []
+    newStickers.current = []
     setRound((r) => r + 1)
   }
 
   if (finished) {
+    const tier: CelebrationTier =
+      stars === QUESTIONS_PER_ROUND ? 4 : stars >= 6 ? 3 : stars >= 3 ? 2 : 1
     return (
       <div className="flex flex-col items-center gap-6">
         <p className="text-3xl font-bold text-gray-700">
           ⭐ {stars} こ あつめたよ！
         </p>
-        <Celebration onNext={nextRound} label="もういちど チャレンジ" />
+        {newStickers.current.length > 0 && (
+          <StickerReveal words={newStickers.current} />
+        )}
+        <Celebration tier={tier} onNext={nextRound} label="もういちど チャレンジ" />
       </div>
     )
   }
@@ -141,12 +169,20 @@ export default function WordQuiz() {
 
   return (
     <div className="flex flex-col items-center gap-6 landscape:gap-3 w-full max-w-xl landscape:max-w-4xl">
-      <div className="flex items-center gap-2 text-2xl">
+      <div className="relative flex items-center gap-2 text-2xl">
         {Array.from({ length: QUESTIONS_PER_ROUND }).map((_, i) => (
           <span key={i} className={i < stars ? '' : 'opacity-25'}>
             ⭐
           </span>
         ))}
+        {combo >= 2 && (
+          <span
+            key={combo}
+            className="absolute left-full ml-3 whitespace-nowrap px-3 py-0.5 rounded-full bg-orange-100 text-orange-600 text-base font-bold animate-pop"
+          >
+            コンボ ×{combo}！
+          </span>
+        )}
       </div>
 
       <p className="text-xl font-bold text-gray-600">
@@ -156,7 +192,7 @@ export default function WordQuiz() {
       <div className="flex flex-col landscape:flex-row items-center gap-6 w-full landscape:justify-center">
         <button
           onClick={() => speak(question.word.word)}
-          className="rounded-3xl bg-white shadow-xl px-12 py-8 landscape:px-8 landscape:py-5 flex flex-col items-center gap-3 active:scale-95 transition-transform"
+          className="rounded-3xl bg-white shadow-xl px-12 py-8 landscape:px-8 landscape:py-5 flex flex-col items-center gap-3 hover:scale-[1.01] active:scale-95 transition-transform"
         >
           <span className="text-8xl landscape:text-7xl">{question.word.emoji}</span>
           <span className="text-3xl font-bold text-gray-800">
@@ -176,12 +212,12 @@ export default function WordQuiz() {
               onClick={() => handleChoice(choice)}
               className={[
                 'aspect-square rounded-2xl text-6xl font-bold shadow-md',
-                'flex items-center justify-center transition-colors',
+                'flex items-center justify-center transition-all',
                 isCorrect
                   ? 'bg-emerald-300 text-emerald-800 animate-pop'
                   : isWrong
                     ? 'bg-red-100 text-red-500 animate-shake'
-                    : 'bg-white text-rose-500 active:bg-rose-50',
+                    : 'bg-white text-rose-500 hover:-translate-y-0.5 hover:shadow-lg active:bg-rose-50',
               ].join(' ')}
             >
               {question.showLower ? choice.lower : choice.upper}
